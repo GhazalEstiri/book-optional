@@ -3,8 +3,8 @@ import Navbar from "./src/navbar";
 export default function Home() {
   return (
     <main>
-       <Navbar />
+      <Navbar />
       <Apibook />
     </main>
-  );
+  )
 }

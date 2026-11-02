@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 // import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 // import Image from "next/image"
@@ -17,21 +17,10 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
-import { section } from "motion/react-client";
+import { useQuery } from "@tanstack/react-query";
 function Apibook() {
-  const [data, setData] = useState<Book[]>([]);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
-  const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const pages = 10;
   const price = 100;
@@ -42,11 +31,6 @@ function Apibook() {
     subject?: string[];
     price: number;
   };
-  // type Image = {
-  //   key: string;
-  //   value: string;
-  //   size: string;
-  // };
   const pageNumber = Array.from({ length: pages }, (v, i) => i + 1);
 
   const categories = [
@@ -58,33 +42,28 @@ function Apibook() {
     { lable: "Love", value: "romance" },
     { lable: "History", value: "history" },
   ];
+
   const limit = 15;
-  useEffect(() => {
-    const response = async () =>
-      // selectedCategory: string,
-      // limit: number,
-      {
-        try {
-          const offset = currentPage * limit;
-          setLoading(true);
-          const query = category === "all" ? "book" : `subject:${category}`;
-          const res = await fetch(
-            `https://openlibrary.org/search.json?q=${query}&fields=key,title,cover_i,subject&limit=${limit}&offset=${offset}`,
-          );
 
-          const data = await res.json();
-          setData(data.docs ?? []);
-        } catch (error) {
-          console.log(error);
-        } finally {
-          setLoading(false);
-        }
-      };
-    response();
-  }, [category, currentPage]);
-  console.log(data);
+  const getApi = async (): Promise<Book[]> => {
+    const offset = (currentPage - 1) * limit;
+    const query = category === "all" ? "book" : `subject:${category}`;
+    const res = await fetch(
+      `https://openlibrary.org/search.json?q=${query}&fields=key,title,cover_i,subject&limit=${limit}&offset=${offset}`,
+    );
+    if (!res.ok) {
+      throw new Error("errrrooooror");
+    }
+    const data = await res.json();
+    return data.docs ?? [];
+  };
+  const query = useQuery({
+    queryKey: [`books`, { category, currentPage }],
+    queryFn: getApi,
+  });
 
-  const filteredBooks = data
+  const books = query.data ?? [];
+  const filteredBooks = books
     .filter((book) => book.cover_i)
     .filter((book) => book.title.toLowerCase().includes(search.toLowerCase()));
 
@@ -183,7 +162,7 @@ function Apibook() {
           </Carousel>
         </div>
       </div>
-      {loading ? (
+      {query.isPending ? (
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-5 place-items-center mt-30">
           <div className="flex w-52 flex-col gap-4 ">
             <div className="skeleton h-32 w-full"></div>
@@ -276,7 +255,7 @@ function Apibook() {
             <div className="skeleton h-4 w-full"></div>
           </div>
         </div>
-      ) : data.length === 0 ? (
+      ) : books.length === 0 ? (
         <p className="text-center mt-20 font-bold text-4xl">Nothing found</p>
       ) : (
         <section className="flex flex-col mt-10">
@@ -350,30 +329,6 @@ function Apibook() {
             </button>
           );
         })}
-
-        {/* <Pagination>
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious href="#" />
-            </PaginationItem>
-            <PaginationItem>
-              {pageNumber.map((btn) => {
-                return (
-                  <PaginationLink key={btn} onClick={() => setCurrentPage(btn)}>
-                    {btn}
-                  </PaginationLink>
-                );
-              })}
-            </PaginationItem>
-
-            <PaginationItem>
-              <PaginationEllipsis />
-            </PaginationItem>
-            <PaginationItem>
-              <PaginationNext href="#" />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination> */}
       </div>
     </section>
   );
